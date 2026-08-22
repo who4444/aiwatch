@@ -1,0 +1,17 @@
+name: aiwatch cron (Hobby workaround — 4h)
+
+on:
+  schedule:
+    - cron: "0 */4 * * *" # keep 4h check even on Vercel Hobby
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /api/cron
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron?secret=${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            | head -c 2000
+          echo "cron triggered"
