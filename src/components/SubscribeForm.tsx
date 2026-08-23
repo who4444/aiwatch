@@ -18,7 +18,7 @@ export default function SubscribeForm() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "failed");
       setStatus("ok");
-      setMsg("Check inbox — free digest. Pro is instant (<1h).");
+      setMsg("You're on the list — welcome email sent. Digest lands daily at most.");
     } catch (err: unknown) {
       setStatus("err");
       setMsg(err instanceof Error ? err.message : "Failed");

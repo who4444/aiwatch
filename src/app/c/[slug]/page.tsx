@@ -8,8 +8,9 @@ export function generateStaticParams() {
   return Object.keys(PROVIDERS).map((slug) => ({ slug }));
 }
 
-export default function CompanyPage({ params }: { params: { slug: string } }) {
-  const slug = params.slug as ProviderSlug;
+export default async function CompanyPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug) as ProviderSlug;
   const provider = PROVIDERS[slug];
   if (!provider) notFound();
   const models = SEED_MODELS.filter((m) => m.provider === slug).sort((a, b) => +new Date(b.release_date) - +new Date(a.release_date));

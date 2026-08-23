@@ -9,7 +9,7 @@ export async function GET() {
     <item>
       <title><![CDATA[${ev.title}]]></title>
       <link>${ev.source_url}</link>
-      <guid>${ev.id}</guid>
+      <guid>https://aiwatch.dev/timeline#${ev.id}</guid>
       <pubDate>${new Date(ev.detected_at).toUTCString()}</pubDate>
       <description><![CDATA[${ev.why_it_matters} Fix: ${ev.fix}]]></description>
       <category>${ev.provider}/${ev.severity}/${ev.event_type}</category>
