@@ -10,7 +10,7 @@ export async function fetchSource(source: Source): Promise<{ body: string; hash:
   try {
     const res = await fetch(source.url, {
       headers: {
-        "User-Agent": "aiwatch/1.0 (+https://aiwatch.dev/bot)",
+        "User-Agent": "aiwatch/1.0 (+https://aiwatch.io/bot)",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
       next: { revalidate: 0 },

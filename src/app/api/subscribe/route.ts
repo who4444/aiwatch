@@ -33,11 +33,10 @@ export async function POST(req: NextRequest) {
     { onConflict: "email,channel" }
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  // fire-and-forget welcome — makes "check your inbox" honest
-  try {
-    await sendWelcomeEmail(email.toLowerCase());
-  } catch {}
-  return NextResponse.json({ ok: true });
+  // welcome — result surfaced so silent failures are impossible
+  const welcome = await sendWelcomeEmail(email.toLowerCase()).catch((e) => ({ ok: false, error: String(e) }));
+  if (!welcome.ok) console.error("[welcome failed]", email, welcome.error);
+  return NextResponse.json({ ok: true, welcome: welcome.ok ? "sent" : `failed: ${welcome.error ?? "unknown"}` });
 }
 
 // Unsubscribe — DELETE /api/subscribe?email=you@x.com

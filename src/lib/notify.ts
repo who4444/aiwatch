@@ -1,7 +1,35 @@
 import { ModelEvent } from "./types";
+import { SITE_URL } from "./site";
 
 function humanType(t: string) {
   return t.replace(/_/g, " ");
+}
+
+// Sender: RESEND_FROM if set, else Resend's onboarding address (works with zero
+// domain verification). If you set alerts@yourdomain.com without verifying the
+// domain in Resend, every send fails 403 — that was the silent welcome bug.
+const FROM = process.env.RESEND_FROM ?? "aiwatch <onboarding@resend.dev>";
+
+export type SendResult = { ok: boolean; skipped?: boolean; error?: string };
+
+async function resendSend(payload: Record<string, unknown>): Promise<SendResult> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { ok: false, skipped: true, error: "RESEND_API_KEY not set" };
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: FROM, ...payload }),
+    });
+    if (res.ok) return { ok: true };
+    const body = await res.text();
+    console.error(`[resend ${res.status}]`, body.slice(0, 300));
+    return { ok: false, error: `resend ${res.status}: ${body.slice(0, 200)}` };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[resend fetch error]", msg);
+    return { ok: false, error: msg };
+  }
 }
 
 export function formatEventForEmail(ev: ModelEvent): { subject: string; html: string; text: string } {
@@ -67,9 +95,9 @@ export function formatEventForEmail(ev: ModelEvent): { subject: string; html: st
           <p style="margin:0;font-family:${fontStack};font-size:11px;line-height:16px;color:#8A8A8E;">
             You're getting this because you asked for <strong style="color:#0A0A0B;">${ev.severity}</strong> alerts for <strong style="color:#0A0A0B;">${ev.provider}</strong>.
             <br>
-            <a href="https://aiwatch.dev/timeline?provider=${ev.provider}" style="color:#0A0A0B;text-decoration:underline;">Manage alerts</a> ·
-            <a href="https://aiwatch.dev/unsubscribe" style="color:#0A0A0B;text-decoration:underline;">Unsubscribe</a> ·
-            <a href="https://aiwatch.dev/timeline" style="color:#0A0A0B;text-decoration:underline;">View timeline</a>
+            <a href="${SITE_URL}/timeline?provider=${ev.provider}" style="color:#0A0A0B;text-decoration:underline;">Manage alerts</a> ·
+            <a href="${SITE_URL}/unsubscribe" style="color:#0A0A0B;text-decoration:underline;">Unsubscribe</a> ·
+            <a href="${SITE_URL}/timeline" style="color:#0A0A0B;text-decoration:underline;">View timeline</a>
           </p>
           <p style="margin:8px 0 0 0;font-family:${fontStack};font-size:10px;line-height:14px;color:#A1A1AA;">
             We watch the official docs and only write when something actually changed. No spam — at most one email a day.
@@ -95,7 +123,7 @@ ${ev.effective_date ? `Changes on ${ev.effective_date}` : ""}
 
 Open official page: ${ev.source_url}
 
-— You're getting ${ev.severity} alerts for ${ev.provider}. Manage: https://aiwatch.dev/timeline?provider=${ev.provider}  Unsubscribe: https://aiwatch.dev/unsubscribe
+— You're getting ${ev.severity} alerts for ${ev.provider}. Manage: ${SITE_URL}/timeline?provider=${ev.provider}  Unsubscribe: ${SITE_URL}/unsubscribe
 We watch the official docs and only write when something actually changed.`;
 
   return { subject, html, text };
@@ -136,7 +164,35 @@ export function formatEventForTelegram(ev: ModelEvent): string {
     .join("\n");
 }
 
-// Daily digest — one email, everything from last 24h. Honest copy, plain words.
+export async function sendDiscord(webhookUrl: string, ev: ModelEvent): Promise<boolean> {
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(formatEventForDiscord(ev)),
+  });
+  return res.ok;
+}
+
+export async function sendTelegram(botToken: string, chatId: string, ev: ModelEvent): Promise<boolean> {
+  const text = formatEventForTelegram(ev);
+  const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown", disable_web_page_preview: false }),
+  });
+  return res.ok;
+}
+
+export async function sendEmailViaResend(to: string, ev: ModelEvent): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[mock email] to=${to} subject=${ev.title}`);
+    return true;
+  }
+  const { subject, html, text } = formatEventForEmail(ev);
+  return (await resendSend({ to, subject, html, text })).ok;
+}
+
+// Daily digest — one email, everything from last 24h.
 export function formatDigestForEmail(events: ModelEvent[]): { subject: string; html: string; text: string } {
   const fontStack = `'JetBrains Mono', 'Courier New', Courier, monospace`;
   const high = events.filter((e) => e.severity === "high");
@@ -164,39 +220,25 @@ export function formatDigestForEmail(events: ModelEvent[]): { subject: string; h
         ${rest.length ? `<tr><td style="padding:16px 20px 0;"><div style="font-family:${fontStack};font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8A8A8E;">Also happened</div></td></tr><tr><td style="padding:4px 20px 0;"><table width="100%" cellpadding="0" cellspacing="0">${rest.map(row).join("")}</table></td></tr>` : ""}
         <tr><td style="padding:20px;border-top:1px dashed #E7E5E0;">
           <p style="margin:0;font-family:${fontStack};font-size:11px;color:#8A8A8E;">
-            <a href="https://aiwatch.dev/timeline" style="color:#0A0A0B;">View timeline</a> ·
-            <a href="https://aiwatch.dev/unsubscribe" style="color:#0A0A0B;">Unsubscribe</a> — one email a day, max.
+            <a href="${SITE_URL}/timeline" style="color:#0A0A0B;">View timeline</a> ·
+            <a href="${SITE_URL}/unsubscribe" style="color:#0A0A0B;">Unsubscribe</a> — one email a day, max.
           </p>
         </td></tr>
       </table>
     </td></tr></table></body></html>`;
 
-  const text = `${subject}\n\n${events.map((e) => `- [${e.severity}] ${e.title}\n  Fix: ${e.fix}\n  ${e.source_url}`).join("\n\n")}\n\nUnsubscribe: https://aiwatch.dev/unsubscribe`;
+  const text = `${subject}\n\n${events.map((e) => `- [${e.severity}] ${e.title}\n  Fix: ${e.fix}\n  ${e.source_url}`).join("\n\n")}\n\nUnsubscribe: ${SITE_URL}/unsubscribe`;
   return { subject, html, text };
 }
 
 export async function sendDigestEmail(to: string, events: ModelEvent[]): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log(`[mock digest] to=${to} events=${events.length}`);
-    return true;
-  }
   const { subject, html, text } = formatDigestForEmail(events);
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.RESEND_FROM ?? "aiwatch <alerts@aiwatch.dev>", to, subject, html, text }),
-  });
-  return res.ok;
+  return (await resendSend({ to, subject, html, text })).ok;
 }
 
-export async function sendWelcomeEmail(to: string): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log(`[mock welcome] to=${to}`);
-    return true;
-  }
+export async function sendWelcomeEmail(to: string): Promise<SendResult> {
   const fontStack = `'JetBrains Mono', 'Courier New', Courier, monospace`;
+  const base = SITE_URL;
   const html = `<html><body style="margin:0;background:#F6F5F1;">
     <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;"><tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#FFF;border:1px solid #D6D3CC;">
@@ -211,63 +253,17 @@ export async function sendWelcomeEmail(to: string): Promise<boolean> {
           <p style="font-family:${fontStack};font-size:13px;line-height:20px;color:#2A2A2E;">
             Until then, browse the live timeline:
           </p>
-          <a href="https://aiwatch.dev/timeline" style="display:inline-block;font-family:${fontStack};font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#FFF;background:#0A0A0B;text-decoration:none;padding:11px 16px;">Open timeline →</a>
+          <a href="${base}/timeline" style="display:inline-block;font-family:${fontStack};font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#FFF;background:#0A0A0B;text-decoration:none;padding:11px 16px;">Open timeline →</a>
           <p style="margin-top:16px;font-family:${fontStack};font-size:10px;color:#A1A1AA;">
-            Didn't sign up? <a href="https://aiwatch.dev/unsubscribe" style="color:#0A0A0B;">Remove yourself here</a>.
+            Didn't sign up? <a href="${base}/unsubscribe" style="color:#0A0A0B;">Remove yourself here</a>.
           </p>
         </td></tr>
       </table>
     </td></tr></table></body></html>`;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM ?? "aiwatch <alerts@aiwatch.dev>",
-      to,
-      subject: "You're on the list — aiwatch",
-      html,
-      text: "You're on the list. Daily digest max; instant alerts come with Pro. Timeline: https://aiwatch.dev/timeline Unsubscribe: https://aiwatch.dev/unsubscribe",
-    }),
+  return resendSend({
+    to,
+    subject: "You're on the list — aiwatch",
+    html,
+    text: `You're on the list. Daily digest max; instant alerts come with Pro.\nTimeline: ${base}/timeline\nUnsubscribe: ${base}/unsubscribe`,
   });
-  return res.ok;
-}
-
-export async function sendDiscord(webhookUrl: string, ev: ModelEvent): Promise<boolean> {
-  const res = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(formatEventForDiscord(ev)),
-  });
-  return res.ok;
-}
-
-export async function sendTelegram(botToken: string, chatId: string, ev: ModelEvent): Promise<boolean> {
-  const text = formatEventForTelegram(ev);
-  const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown", disable_web_page_preview: false }),
-  });
-  return res.ok;
-}
-
-export async function sendEmailViaResend(to: string, ev: ModelEvent): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log(`[mock email] to=${to} subject=${ev.title}`);
-    return true;
-  }
-  const { subject, html, text } = formatEventForEmail(ev);
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM ?? "aiwatch <alerts@aiwatch.dev>",
-      to,
-      subject,
-      html,
-      text,
-    }),
-  });
-  return res.ok;
 }

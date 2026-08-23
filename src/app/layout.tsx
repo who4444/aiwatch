@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site";
 
 const fixed = JetBrains_Mono({
   subsets: ["latin"],
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
   title: "aiwatch — Never wake to model_not_found",
   description:
     "Breaking-change monitor for 11 frontier labs. Deprecations, alias retirements, price thresholds & sunset alerts in <1h with fix-it notes. $5/mo, $39/yr.",
-  metadataBase: new URL("https://aiwatch.dev"),
+  metadataBase: new URL(SITE_URL),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/timeline" className="px-3 py-1.5 text-xs tracking-widest uppercase hover:bg-[var(--ink)] hover:text-[var(--paper)] transition">Timeline</a>
               <a href="/analytics" className="px-3 py-1.5 text-xs tracking-widest uppercase hover:bg-[var(--ink)] hover:text-[var(--paper)] transition">Analytics</a>
               <a href="/c/openai" className="px-3 py-1.5 text-xs tracking-widest uppercase text-[var(--slate)] hover:text-[var(--ink)]">Providers →</a>
-              <a href="/feed" className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--line-strong)] bg-white px-3 py-1.5 text-xs uppercase tracking-widest">
+              <a href="/follow" className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--line-strong)] bg-white px-3 py-1.5 text-xs uppercase tracking-widest">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--hazard)] animate-pulse" /> Follow
               </a>
             </nav>
@@ -83,7 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <div className="space-y-2">
                 <div className="opacity-40">Follow</div>
-                <a href="/feed" className="block hover:underline">Updates feed</a>
+                <a href="/follow" className="block hover:underline">Follow options</a>
                 <a href="/api/x-bot?preview=1" className="block hover:underline">X bot preview</a>
                 <a href="https://github.com" className="block hover:underline">Source</a>
               </div>

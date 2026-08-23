@@ -1,6 +1,8 @@
 import { SEED_EVENTS } from "@/lib/seed-data";
+import { SITE_URL } from "@/lib/site";
 
 export async function GET() {
+  const base = SITE_URL;
   const items = [...SEED_EVENTS]
     .sort((a, b) => +new Date(b.detected_at) - +new Date(a.detected_at))
     .slice(0, 20)
@@ -9,7 +11,7 @@ export async function GET() {
     <item>
       <title><![CDATA[${ev.title}]]></title>
       <link>${ev.source_url}</link>
-      <guid>https://aiwatch.dev/timeline#${ev.id}</guid>
+      <guid>${base}/timeline#${ev.id}</guid>
       <pubDate>${new Date(ev.detected_at).toUTCString()}</pubDate>
       <description><![CDATA[${ev.why_it_matters} Fix: ${ev.fix}]]></description>
       <category>${ev.provider}/${ev.severity}/${ev.event_type}</category>
@@ -20,7 +22,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
   <title>aiwatch — breaking changes</title>
-  <link>https://aiwatch.dev/timeline</link>
+  <link>${base}/timeline</link>
   <description>Breaking-change monitor for 11 frontier labs. Deprecations, alias retirements, price thresholds.</description>
   ${items}
 </channel></rss>`;

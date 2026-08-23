@@ -1,8 +1,9 @@
+import { SITE_URL } from "@/lib/site";
 import type { MetadataRoute } from "next";
 import { PROVIDERS } from "@/lib/providers";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://aiwatch.dev";
+  const base = SITE_URL;
   const now = new Date();
   return [
     { url: base, lastModified: now, changeFrequency: "daily", priority: 1 },

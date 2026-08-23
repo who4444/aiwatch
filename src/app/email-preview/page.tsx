@@ -16,7 +16,7 @@ export default function EmailPreviewPage({ searchParams }: { searchParams: { id?
       <div className="mt-6 border border-[var(--line-strong)] bg-white p-4">
         <div className="text-xs tracking-wide uppercase opacity-60">Subject</div>
         <div className="font-medium mt-1">{subject}</div>
-        <div className="text-xs opacity-60 mt-2">From: aiwatch &lt;alerts@aiwatch.dev&gt; · Preheader: {ev.why_it_matters.slice(0, 80)}…</div>
+        <div className="text-xs opacity-60 mt-2">From: aiwatch &lt;onboarding@resend.dev&gt; (or your RESEND_FROM) · Preheader: {ev.why_it_matters.slice(0, 80)}…</div>
       </div>
 
       <div className="mt-6">

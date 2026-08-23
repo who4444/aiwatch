@@ -4,9 +4,10 @@ import { PROVIDERS } from "@/lib/providers";
 
 export const metadata = { title: "Timeline — aiwatch" };
 
-export default function TimelinePage({ searchParams }: { searchParams: { provider?: string; severity?: string } }) {
-  const provider = searchParams.provider as string | undefined;
-  const severity = searchParams.severity as string | undefined;
+export default async function TimelinePage({ searchParams }: { searchParams: Promise<{ provider?: string; severity?: string }> }) {
+  const sp = await searchParams;
+  const provider = sp.provider as string | undefined;
+  const severity = sp.severity as string | undefined;
   let events = [...SEED_EVENTS].sort((a, b) => +new Date(b.detected_at) - +new Date(a.detected_at));
   if (provider) events = events.filter((e) => e.provider === provider);
   if (severity) events = events.filter((e) => e.severity === severity);

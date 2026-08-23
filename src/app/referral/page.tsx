@@ -1,3 +1,5 @@
+import { SITE_URL } from "@/lib/site";
+
 export const metadata = { title: "Referral — aiwatch" };
 
 export default function ReferralPage() {
@@ -11,7 +13,7 @@ export default function ReferralPage() {
         <div className="h-1 hazard" />
         <div className="p-6">
           <div className="mono text-[10px] tracking-widest uppercase opacity-60">Your share link (mock)</div>
-          <div className="mt-2 bg-[var(--ink)] text-[var(--paper)] px-3 py-3 mono text-sm break-all">https://aiwatch.dev/?ref=YOUR_EMAIL</div>
+          <div className="mt-2 bg-[var(--ink)] text-[var(--paper)] px-3 py-3 mono text-sm break-all">{SITE_URL}/?ref=YOUR_EMAIL</div>
           <div className="mt-3 mono text-xs opacity-60 leading-relaxed">
             Referrer captured via <code className="bg-[var(--paper-2)] border px-1">?ref=</code> in SubscribeForm + checkout-intent. Logged to <code className="bg-[var(--paper-2)] border px-1">subscribers.referrer</code> +{" "}
             <code className="bg-[var(--paper-2)] border px-1">checkout_intents.referrer</code>. Query: <code className="bg-[var(--paper-2)] border px-1">select referrer, count(*) from checkout_intents group by referrer</code>
